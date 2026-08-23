@@ -378,10 +378,10 @@ class OAuthClient:
             # The .error attribute carries the OAuth error code (e.g.
             # "invalid_grant") which refresh_token uses to distinguish
             # permanent from transient failures.
-            raise _TokenEndpointError(
-                f"{exc.error}: {exc.description}" if exc.description else str(exc.error),
-                error_code=str(exc.error),
-            ) from exc
+            error_code = exc.error if isinstance(exc.error, str) else str(exc.error)
+            description = exc.description if isinstance(exc.description, str) else ""
+            msg = f"{error_code}: {description}" if description else error_code
+            raise _TokenEndpointError(msg, error_code=error_code) from exc
         except httpx.HTTPStatusError as exc:
             # Authlib calls raise_for_status() for 5xx responses, producing
             # an httpx.HTTPStatusError. We attempt to extract the OAuth

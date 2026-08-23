@@ -426,6 +426,39 @@ class TestExchangeCode:
             )
         assert exc_info.value.error_code == "invalid_grant"
 
+    async def test_exchange_string_error_description_rendered_in_message(self, httpx_mock: HTTPXMock) -> None:
+        httpx_mock.add_response(
+            url="https://provider.example.com/token",
+            status_code=400,
+            json={"error": "invalid_grant", "error_description": "Code expired"},
+        )
+        client = OAuthClient(config=_make_config())
+        with pytest.raises(TokenExchangeError) as exc_info:
+            await client.exchange_code(
+                code="bad-code",
+                redirect_uri="https://app.example.com/callback",
+            )
+        assert str(exc_info.value) == "invalid_grant: Code expired"
+
+    async def test_exchange_non_string_error_description_omitted_from_message(self, httpx_mock: HTTPXMock) -> None:
+        httpx_mock.add_response(
+            url="https://provider.example.com/token",
+            status_code=400,
+            json={
+                "error": "invalid_grant",
+                "error_description": {"nested": "obj", "leak": "SECRET-ISH-DATA"},
+            },
+        )
+        client = OAuthClient(config=_make_config())
+        with pytest.raises(TokenExchangeError) as exc_info:
+            await client.exchange_code(
+                code="bad-code",
+                redirect_uri="https://app.example.com/callback",
+            )
+        assert exc_info.value.error_code == "invalid_grant"
+        assert str(exc_info.value) == "invalid_grant"
+        assert "SECRET-ISH-DATA" not in str(exc_info.value)
+
     async def test_exchange_extra_fields_in_token_set(self, httpx_mock):
         httpx_mock.add_response(
             url="https://provider.example.com/token",
@@ -829,6 +862,24 @@ class TestRefreshToken:
             await client.refresh_token(refresh_token="some-refresh")
         assert exc_info.value.error_code == ""
         assert str(exc_info.value) == "HTTP 500: backend unavailable"
+
+    async def test_refresh_permanent_error_non_string_description_omitted_from_message(
+        self, httpx_mock: HTTPXMock
+    ) -> None:
+        httpx_mock.add_response(
+            url="https://provider.example.com/token",
+            status_code=400,
+            json={
+                "error": "invalid_grant",
+                "error_description": {"nested": "obj", "leak": "SECRET-ISH-DATA"},
+            },
+        )
+        client = OAuthClient(config=_make_config())
+        with pytest.raises(PermanentOAuthError) as exc_info:
+            await client.refresh_token(refresh_token="revoked-refresh")
+        assert exc_info.value.error_code == "invalid_grant"
+        assert str(exc_info.value) == "invalid_grant"
+        assert "SECRET-ISH-DATA" not in str(exc_info.value)
 
 
 class TestRevokeToken:
