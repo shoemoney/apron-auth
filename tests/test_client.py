@@ -894,6 +894,33 @@ class TestRefreshToken:
             await client.refresh_token(refresh_token="some-refresh")
         assert exc_info.value.error_code == ""
         assert "SECRET-ISH-DATA" not in str(exc_info.value)
+        assert str(exc_info.value) == "unspecified token endpoint error"
+
+    async def test_refresh_empty_error_code_keeps_a_descriptive_message(self, httpx_mock: HTTPXMock) -> None:
+        httpx_mock.add_response(
+            url="https://provider.example.com/token",
+            status_code=400,
+            json={"error": ""},
+        )
+        client = OAuthClient(config=_make_config())
+        with pytest.raises(TokenRefreshError) as exc_info:
+            await client.refresh_token(refresh_token="some-refresh")
+        assert exc_info.value.error_code == ""
+        assert str(exc_info.value) == "unspecified token endpoint error"
+
+    async def test_refresh_empty_error_code_with_description_keeps_a_descriptive_prefix(
+        self, httpx_mock: HTTPXMock
+    ) -> None:
+        httpx_mock.add_response(
+            url="https://provider.example.com/token",
+            status_code=400,
+            json={"error": "", "error_description": "authorization code expired"},
+        )
+        client = OAuthClient(config=_make_config())
+        with pytest.raises(TokenRefreshError) as exc_info:
+            await client.refresh_token(refresh_token="some-refresh")
+        assert exc_info.value.error_code == ""
+        assert str(exc_info.value) == "unspecified token endpoint error: authorization code expired"
 
 
 class TestRevokeToken:

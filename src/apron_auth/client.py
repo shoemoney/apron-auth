@@ -380,7 +380,8 @@ class OAuthClient:
             # permanent from transient failures.
             error_code = exc.error if isinstance(exc.error, str) else ""
             description = exc.description if isinstance(exc.description, str) else ""
-            msg = f"{error_code}: {description}" if description else error_code
+            prefix = error_code or "unspecified token endpoint error"
+            msg = f"{prefix}: {description}" if description else prefix
             raise _TokenEndpointError(msg, error_code=error_code) from exc
         except httpx.HTTPStatusError as exc:
             # Authlib calls raise_for_status() for 5xx responses, producing
