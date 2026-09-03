@@ -881,6 +881,20 @@ class TestRefreshToken:
         assert str(exc_info.value) == "invalid_grant"
         assert "SECRET-ISH-DATA" not in str(exc_info.value)
 
+    async def test_refresh_non_string_error_in_oauth_error_body_has_empty_error_code(
+        self, httpx_mock: HTTPXMock
+    ) -> None:
+        httpx_mock.add_response(
+            url="https://provider.example.com/token",
+            status_code=400,
+            json={"error": {"code": "invalid_grant", "leak": "SECRET-ISH-DATA"}},
+        )
+        client = OAuthClient(config=_make_config())
+        with pytest.raises(TokenRefreshError) as exc_info:
+            await client.refresh_token(refresh_token="some-refresh")
+        assert exc_info.value.error_code == ""
+        assert "SECRET-ISH-DATA" not in str(exc_info.value)
+
 
 class TestRevokeToken:
     async def test_successful_revocation(self, httpx_mock):

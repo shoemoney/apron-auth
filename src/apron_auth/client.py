@@ -378,7 +378,7 @@ class OAuthClient:
             # The .error attribute carries the OAuth error code (e.g.
             # "invalid_grant") which refresh_token uses to distinguish
             # permanent from transient failures.
-            error_code = exc.error if isinstance(exc.error, str) else str(exc.error)
+            error_code = exc.error if isinstance(exc.error, str) else ""
             description = exc.description if isinstance(exc.description, str) else ""
             msg = f"{error_code}: {description}" if description else error_code
             raise _TokenEndpointError(msg, error_code=error_code) from exc
